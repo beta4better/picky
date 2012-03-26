@@ -58,7 +58,7 @@ class WriterAuthHandler(webapp.RequestHandler):
       site_domain_sync = os.environ['HTTP_HOST']
       Datum.set('site_domain_sync', os.environ['HTTP_HOST'])
     template_values = {}
-    
+
     if 'message' in self.session:
       message = self.session['message']
       del self.session['message']
@@ -71,7 +71,7 @@ class WriterAuthHandler(webapp.RequestHandler):
     template_values['system_version'] = VERSION
     path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'auth.html')
     self.response.out.write(template.render(path, template_values))
-    
+
   def post(self):
     self.session = Session()
     site_domain = Datum.get('site_domain')
@@ -199,7 +199,7 @@ class WriterOverviewHandler(webapp.RequestHandler):
     if mentions_web is not None:
       template_values['mentions_web'] = mentions_web.entries
     #mentions_twitter = memcache.get('mentions_twitter')
-    #if mentions_twitter is None:    
+    #if mentions_twitter is None:
     #  try:
     #    result = urlfetch.fetch('http://search.twitter.com/search.json?q=' + urllib.quote(q))
     #    if result.status_code == 200:
@@ -231,8 +231,12 @@ class WriterSettingsHandler(webapp.RequestHandler):
     site_default_format = Datum.get('site_default_format')
     if site_default_format is None:
       site_default_format = 'html'
-    twitter_account = Datum.get('twitter_account')
-    twitter_password = Datum.get('twitter_password')
+
+    twitter_consumer_key        = Datum.get('twitter_consumer_key')
+    twitter_consumer_secret     = Datum.get('twitter_consumer_secret')
+    twitter_access_token_key    = Datum.get('twitter_access_token_key')
+    twitter_access_token_secret = Datum.get('twitter_access_token_secret')
+
     twitter_sync = None
     q = db.GqlQuery("SELECT * FROM Datum WHERE title = 'twitter_sync'")
     if q.count() == 1:
@@ -252,8 +256,10 @@ class WriterSettingsHandler(webapp.RequestHandler):
       'site_slogan' : site_slogan,
       'site_analytics' : site_analytics,
       'site_default_format' : site_default_format,
-      'twitter_account' : twitter_account,
-      'twitter_password' : twitter_password,
+      'twitter_consumer_key': twitter_consumer_key,
+      'twitter_consumer_secret':twitter_consumer_secret,
+      'twitter_access_token_key':twitter_access_token_key,
+      'twitter_access_token_secret':twitter_access_token_secret,
       'twitter_sync' : twitter_sync,
       'feed_url' : feed_url,
       'themes' : themes,
@@ -264,7 +270,7 @@ class WriterSettingsHandler(webapp.RequestHandler):
     template_values['system_version'] = VERSION
     path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'settings.html')
     self.response.out.write(template.render(path, template_values))
-    
+
   def post(self):
     self.session = Session()
     if CheckAuth(self) is False:
@@ -279,8 +285,12 @@ class WriterSettingsHandler(webapp.RequestHandler):
       Datum.set('site_default_format', 'html')
     else:
       Datum.set('site_default_format', self.request.get('site_default_format'))
-    Datum.set('twitter_account', self.request.get('twitter_account'))
-    Datum.set('twitter_password', self.request.get('twitter_password'))
+
+    Datum.set('twitter_consumer_key',  self.request.get('twitter_consumer_key'))
+    Datum.set('twitter_consumer_secret', self.request.get('twitter_consumer_secret'))
+    Datum.set('twitter_access_token_key', self.request.get('twitter_access_token_key'))
+    Datum.set('twitter_access_token_secret', self.request.get('twitter_access_token_secret'))
+
     q = db.GqlQuery("SELECT * FROM Datum WHERE title = 'twitter_sync'")
     if q.count() == 1:
       twitter_sync = q[0]
@@ -301,7 +311,7 @@ class WriterSettingsHandler(webapp.RequestHandler):
       Datum.set('site_theme', 'default')
     memcache.delete('mentions_twitter')
     self.redirect('/writer/settings')
-    
+
 class WriterWriteHandler(webapp.RequestHandler):
   def get(self, key = ''):
     self.session = Session()
@@ -355,7 +365,7 @@ class WriterRemoveHandler(webapp.RequestHandler):
 class WriterSynchronizeHandler(webapp.RequestHandler):
   def get(self):
     self.redirect('/writer')
-    
+
   def post(self, key = ''):
     self.session = Session()
     if CheckAuth(self) is False:
@@ -421,11 +431,9 @@ class WriterSynchronizeHandler(webapp.RequestHandler):
         self.session['message'] = '<div style="float: right;"><a href="http://' + site_domain + '/' + article.title_url + '" target="_blank" class="super normal button">View Now</a></div>New article <a href="/writer/edit/' + str(article.key()) + '">' + article.title + '</a> has been created'
         # Ping Twitter
         twitter_sync = Datum.get('twitter_sync')
-        if twitter_sync == 'True' and article.is_page is False:  
-          twitter_account = Datum.get('twitter_account')
-          twitter_password = Datum.get('twitter_password')
-          if twitter_account != '' and twitter_password != '':
-            api = twitter.Api(username=twitter_account, password=twitter_password)
+        if twitter_sync == 'True' and article.is_page is False:
+          api = twitter.new(Datum)
+          if api:
             try:
               status = api.PostUpdate(article.title + ' http://' + site_domain_sync + '/' + article.title_url + ' (Sync via @projectpicky)')
             except:
@@ -474,7 +482,7 @@ class WriterSynchronizeHandler(webapp.RequestHandler):
       template_values['system_version'] = VERSION
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'write.html')
       self.response.out.write(template.render(path, template_values))
-      
+
 class WriterQuickFindHandler(webapp.RequestHandler):
   def post(self):
     self.session = Session()
@@ -503,7 +511,7 @@ class WriterPingHandler(webapp.RequestHandler):
         self.response.out.write('Reached but failed: Google Blog Search Ping: ' + google_ping)
     except:
       self.response.out.write('Failed: Google Blog Search Ping: ' + google_ping)
-  
+
 def main():
   application = webapp.WSGIApplication([
   ('/writer', WriterOverviewHandler),

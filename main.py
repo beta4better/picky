@@ -47,7 +47,7 @@ class MainHandler(webapp.RequestHandler):
 
         if site_analytics is not None:
             template_values['site_analytics'] = site_analytics
-    
+
         output = memcache.get('index_output_a')
         if output is None:
             articles = memcache.get('index')
@@ -99,9 +99,9 @@ class ArchiveHandler(webapp.RequestHandler):
 
     if site_analytics is not None:
       template_values['site_analytics'] = site_analytics
-    
+
     output = memcache.get('archive_output')
-    if output is None:  
+    if output is None:
       articles = memcache.get('archive')
       if articles is None:
         articles = db.GqlQuery("SELECT * FROM Article WHERE is_page = FALSE ORDER BY created DESC")
@@ -156,7 +156,7 @@ class TopHandler(webapp.RequestHandler):
       template_values['site_analytics'] = site_analytics
 
     output = memcache.get('top_output')
-    if output is None:  
+    if output is None:
       articles = memcache.get('top')
       if articles is None:
         articles = db.GqlQuery("SELECT * FROM Article ORDER BY hits DESC LIMIT 20")
@@ -211,40 +211,59 @@ class TweetsHandler(webapp.RequestHandler):
       template_values['site_analytics'] = site_analytics
 
     output = memcache.get('tweets_output')
-    twitter_account = Datum.get('twitter_account')
-    twitter_password = Datum.get('twitter_password')
-    api = twitter.Api(username=twitter_account, password=twitter_password)
-    if output is None:  
+    api    = twitter.new(Datum)
+
+    if api and output is not None:
+      account = memcache.get('twitter_account')
+
+      if account is None:
+        account = api.VerifyCredentials()
+        memcache.set("twitter_account", account, 3600)
+
       tweets = memcache.get('tweets')
-      if tweets is None:
-        tweets = api.GetUserTimeline(user=twitter_account, count=20)
-        memcache.add("tweets", tweets, 600)
+      if account and tweets is None:
+        tweets  = api.GetUserTimeline(account.screen_name, count=20)
+        memcache.set("tweets", tweets, 600)
+      elif not account:
+        tweets = []
+
       for tweet in tweets:
         tweet.datetime = datetime.datetime.fromtimestamp(time.mktime(time.strptime(tweet.created_at, '%a %b %d %H:%M:%S +0000 %Y')))
         tweet.text = api.ConvertMentions(tweet.text)
         tweet.text = api.ExpandBitly(tweet.text)
+
       pages = db.GqlQuery("SELECT * FROM Article WHERE is_page = TRUE AND is_for_sidebar = TRUE ORDER BY title ASC")
-      template_values['page_title'] = site_name + u' › Latest 20 Tweets by @' + twitter_account
+
+      if account is None:
+        template_values['page_title'] = site_name + u' › Error'
+      else:
+        template_values['page_title'] = site_name + u' › Latest 20 Tweets by @' + account.screen_name
+        template_values['twitter_account'] = account.name
+        template_values['twitter_followers'] = account.followers_count
+        template_values['twitter_avatar'] = account.profile_image_url
+
       template_values['tweets'] = tweets
       template_values['tweets_total'] = len(tweets)
-      template_values['twitter_account'] = tweets[0].user.name;
-      template_values['twitter_followers'] = tweets[0].user.followers_count;
-      template_values['twitter_avatar'] = tweets[0].user.profile_image_url
+
       template_values['pages'] = pages
       template_values['pages_total'] = pages.count()
       template_values['page_top'] = True
       site_theme = Datum.get('site_theme')
       if site_theme is None:
         site_theme = 'default'
+
       themes = os.listdir(os.path.join(os.path.dirname(__file__), 'tpl', 'themes'))
       if site_theme not in themes:
         site_theme = 'default'
+
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'themes', site_theme, 'tweets.html')
       output = template.render(path, template_values)
-      memcache.add('tweets_output', output, 600)
+      memcache.set('tweets_output', output, 600)
+    elif not api:
+        output = 'please config your twitter.'
     self.response.out.write(output)
 
-  
+
 class ArticleHandler(webapp.RequestHandler):
     def head(self, url):
         pass
@@ -275,7 +294,7 @@ class ArticleHandler(webapp.RequestHandler):
 
         if site_analytics is not None:
             template_values['site_analytics'] = site_analytics
-    
+
         pages = db.GqlQuery("SELECT * FROM Article WHERE is_page = TRUE AND is_for_sidebar = TRUE ORDER BY title ASC")
         article = db.GqlQuery("SELECT * FROM Article WHERE title_url = :1 LIMIT 1", url)
         if (article.count() == 1):
@@ -302,7 +321,7 @@ class ArticleHandler(webapp.RequestHandler):
                 else:
                     template_values['related'] = False
             else:
-                template_values['related'] = False  
+                template_values['related'] = False
             parent = None
             if article.parent is not '':
                 q = db.GqlQuery("SELECT * FROM Article WHERE title_url = :1 LIMIT 1", article.parent_url)
@@ -362,7 +381,7 @@ class AtomFeedHandler(webapp.RequestHandler):
 
     if site_analytics is not None:
       template_values['site_analytics'] = site_analytics
-    
+
     output = memcache.get('feed_output')
     if output is None:
       articles = db.GqlQuery("SELECT * FROM Article WHERE is_page = FALSE ORDER BY created DESC LIMIT 100")
@@ -437,7 +456,7 @@ class AtomSitemapHandler(webapp.RequestHandler):
 
     if site_analytics is not None:
       template_values['site_analytics'] = site_analytics
-    
+
     output = memcache.get('sitemap_output')
     if output is None:
       articles = db.GqlQuery("SELECT * FROM Article ORDER BY last_modified DESC")
@@ -449,7 +468,7 @@ class AtomSitemapHandler(webapp.RequestHandler):
       memcache.set('sitemap_output', output, 86400)
     self.response.headers['Content-type'] = 'text/xml; charset=UTF-8'
     self.response.out.write(output)
-    
+
 class RobotsHandler(webapp.RequestHandler):
   def get(self):
     template_values = {}

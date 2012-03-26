@@ -62,11 +62,17 @@
 	<div class="sep10"></div>
 	<small class="fade">By turning on this option, your every post will be synchronized to your Twitter.</small>
 	<div class="sep10"></div>
-	Twitter Account<br />
-	<input type="text" class="sls" name="twitter_account" value="{% if twitter_account %}{{ twitter_account|escape }}{% endif %}" />
+	Consumer Key<br />
+	<input type="text" class="sl" name="twitter_consumer_key" value="{% if twitter_consumer_key %}{{ twitter_consumer_key|escape }}{% endif %}" />
 	<br /><br />
-	Twitter Password<br />
-	<input type="password" class="sls" name="twitter_password" value="{% if twitter_password %}{{ twitter_password|escape }}{% endif %}" />
+	Consumer Secret<br />
+	<input type="text" class="sl" name="twitter_consumer_secret" value="{% if twitter_consumer_secret %}{{ twitter_consumer_secret|escape }}{% endif %}" />
+	<br /><br />
+	Access Token Key<br />
+	<input type="text" class="sl" name="twitter_access_token_key" value="{% if twitter_access_token_key %}{{ twitter_access_token_key|escape }}{% endif %}" />
+	<br /><br />
+	Access Token Secret<br />
+	<input type="text" class="sl" name="twitter_access_token_secret" value="{% if twitter_access_token_secret %}{{ twitter_access_token_secret|escape }}{% endif %}" />
 	<br /><br />
 	<small>Twitter Sync: {% if twitter_sync %}
 	<select name="twitter_sync"><option value="True" selected="selected">On</option><option value="False">Off</option></select>

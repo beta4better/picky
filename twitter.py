@@ -26,8 +26,6 @@ site_author = Datum.get('site_author')
 site_slogan = Datum.get('site_slogan')
 site_analytics = Datum.get('site_analytics')
 
-user = users.get_current_user()
-
 MODE_TWITTER = True
 
 class TwitterHomeHandler(webapp.RequestHandler):
@@ -36,12 +34,11 @@ class TwitterHomeHandler(webapp.RequestHandler):
     if CheckAuth(self) is False:
       return DoAuth(self, '/twitter')
     template_values = {}
-    twitter_account = Datum.get('twitter_account')
-    twitter_password = Datum.get('twitter_password')
-    api = twitter.Api(username=twitter_account, password=twitter_password)
+    api   = twitter.new(Datum)
+    account = api.VerifyCredentials()
     limit = api.GetRateLimit()
     template_values['limit'] = limit
-    lists = api.GetLists()
+    lists = api.GetLists(account.screen_name)
     template_values['lists'] = lists
     tweets = None
     tweets = memcache.get('twitter_home')
@@ -62,31 +59,30 @@ class TwitterHomeHandler(webapp.RequestHandler):
     else:
       template_values['tweets'] = tweets
     template_values['system_version'] = VERSION
-    template_values['mode_twitter'] = True;
+    template_values['mode_twitter'] = True
     template_values['page_title'] = 'Twitter'
     path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter.html')
     self.response.out.write(template.render(path, template_values))
-  
+
 class TwitterListHandler(webapp.RequestHandler):
   def get(self, list_id):
     self.session = Session()
     if CheckAuth(self) is False:
       return DoAuth(self, '/twitter/list/' + list_id)
     template_values = {}
-    twitter_account = Datum.get('twitter_account')
-    twitter_password = Datum.get('twitter_password')
-    api = twitter.Api(username=twitter_account, password=twitter_password)
+    api = twitter.new(Datum)
     try:
       limit = api.GetRateLimit()
       template_values['limit'] = limit
-      lists = api.GetLists()
+      account = api.VerifyCredentials()
+      lists = api.GetLists(account.screen_name)
       template_values['lists'] = lists
       template_values['list_id'] = int(list_id)
       tweets = None
       tweets = memcache.get('twitter_list_' + list_id)
       if tweets is None:
         try:
-          tweets = api.GetListTimeline(user=twitter_account, list_id=list_id)
+          tweets = api.GetListTimeline(account.screen_name, list_id=list_id)
         except:
           api = None
         if tweets is not None:
@@ -101,13 +97,13 @@ class TwitterListHandler(webapp.RequestHandler):
       else:
         template_values['tweets'] = tweets
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter List'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_list.html')
       self.response.out.write(template.render(path, template_values))
     except:
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter Fail'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_fail.html')
       self.response.out.write(template.render(path, template_values))
@@ -118,13 +114,13 @@ class TwitterMentionsHandler(webapp.RequestHandler):
     if CheckAuth(self) is False:
       return DoAuth(self, '/twitter/mentions')
     template_values = {}
-    twitter_account = Datum.get('twitter_account')
-    twitter_password = Datum.get('twitter_password')
-    api = twitter.Api(username=twitter_account, password=twitter_password)
+
+    api = twitter.new(Datum)
     try:
       limit = api.GetRateLimit()
       template_values['limit'] = limit
-      lists = api.GetLists()
+      account = api.VerifyCredentials()
+      lists = api.GetLists(account.screen_name)
       template_values['lists'] = lists
       tweets = None
       tweets = memcache.get('twitter_mentions')
@@ -145,13 +141,13 @@ class TwitterMentionsHandler(webapp.RequestHandler):
       else:
         template_values['tweets'] = tweets
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter Mentions'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_mentions.html')
       self.response.out.write(template.render(path, template_values))
     except:
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter Fail'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_fail.html')
       self.response.out.write(template.render(path, template_values))
@@ -162,13 +158,13 @@ class TwitterInboxHandler(webapp.RequestHandler):
     if CheckAuth(self) is False:
       return DoAuth(self, '/twitter/inbox')
     template_values = {}
-    twitter_account = Datum.get('twitter_account')
-    twitter_password = Datum.get('twitter_password')
-    api = twitter.Api(username=twitter_account, password=twitter_password)
+
+    api = twitter.new(Datum)
     try:
       limit = api.GetRateLimit()
       template_values['limit'] = limit
-      lists = api.GetLists()
+      account = api.VerifyCredentials()
+      lists = api.GetLists(account.screen_name)
       template_values['lists'] = lists
       tweets = None
       tweets = memcache.get('twitter_inbox')
@@ -189,13 +185,13 @@ class TwitterInboxHandler(webapp.RequestHandler):
       else:
         template_values['tweets'] = tweets
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter Inbox'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_inbox.html')
       self.response.out.write(template.render(path, template_values))
     except:
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter Fail'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_fail.html')
       self.response.out.write(template.render(path, template_values))
@@ -206,27 +202,27 @@ class TwitterUserHandler(webapp.RequestHandler):
     if CheckAuth(self) is False:
       return DoAuth(self, '/twitter/user/' + user)
     template_values = {}
-    twitter_account = Datum.get('twitter_account')
-    twitter_password = Datum.get('twitter_password')
-    api = twitter.Api(username=twitter_account, password=twitter_password)
+
+    api = twitter.new(Datum)
     try:
       limit = api.GetRateLimit()
       template_values['limit'] = limit
-      lists = api.GetLists()
+      account = api.VerifyCredentials()
+      lists = api.GetLists(account.screen_name)
       template_values['lists'] = lists
-      if twitter_account == user:
+      if account.screen_name == user:
         template_values['me'] = True
       else:
         template_values['me'] = False
       friendships_ab = False
       friendships_ba = False
-      friendships_ab = api.GetFriendshipsExists(twitter_account, user)
-      friendships_ba = api.GetFriendshipsExists(user, twitter_account)
+      friendships_ab = api.GetFriendshipsExists(account.screen_name, user)
+      friendships_ba = api.GetFriendshipsExists(user, account.screen_name)
       tweets = None
       tweets = memcache.get('twitter_user_' + user)
       if tweets is None:
         try:
-          tweets = api.GetUserTimeline(user=user, count=100)
+          tweets = api.GetUserTimeline(user, count=100)
         except:
           api = None
         if tweets is not None:
@@ -244,13 +240,13 @@ class TwitterUserHandler(webapp.RequestHandler):
       template_values['friendships_ba'] = friendships_ba
       template_values['twitter_user'] = tweets[0].user
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter User'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_user.html')
       self.response.out.write(template.render(path, template_values))
     except:
       template_values['system_version'] = VERSION
-      template_values['mode_twitter'] = True;
+      template_values['mode_twitter'] = True
       template_values['page_title'] = 'Twitter Fail'
       path = os.path.join(os.path.dirname(__file__), 'tpl', 'writer', 'twitter_fail.html')
       self.response.out.write(template.render(path, template_values))
@@ -260,18 +256,19 @@ class TwitterFriendshipHandler(webapp.RequestHandler):
     self.session = Session()
     if CheckAuth(self) is False:
       return DoAuth(self, '/twitter/user/' + user)
-    twitter_account = Datum.get('twitter_account')
-    if twitter_account == user:
+
+    api = twitter.new(Datum)
+    account = api.VerifyCredentials()
+
+    if account.screen_name == user:
       self.redirect('/twitter/user/' + user)
     else:
-      twitter_password = Datum.get('twitter_password')
-      api = twitter.Api(username=twitter_account, password=twitter_password)
       if method == 'follow':
         twitter_user = api.CreateFriendship(user)
       if method == 'unfollow':
         twitter_user = api.DestroyFriendship(user)
       self.redirect('/twitter/user/' + user)
-  
+
 class TwitterPostHandler(webapp.RequestHandler):
   def post(self):
     self.session = Session()
@@ -279,9 +276,7 @@ class TwitterPostHandler(webapp.RequestHandler):
       return DoAuth(self, '/twitter')
     tweet = self.request.get('status')
     if tweet != '':
-      twitter_account = Datum.get('twitter_account')
-      twitter_password = Datum.get('twitter_password')
-      api = twitter.Api(username=twitter_account, password=twitter_password)
+      api = twitter.new(Datum)
       try:
         api.PostUpdate(tweet)
       except:
@@ -289,7 +284,7 @@ class TwitterPostHandler(webapp.RequestHandler):
     memcache.delete('twitter_home')
     self.redirect('/twitter')
 
-  
+
 def main():
   application = webapp.WSGIApplication([
   ('/twitter', TwitterHomeHandler),

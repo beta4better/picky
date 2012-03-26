@@ -9,4 +9,4 @@
 # >>> hashlib.sha1('secret').hexdigest()
 # 'e5e9fa1ba31ecd1ae84f75caaa474f3a663f05f4'
 
-SECRET = '365696f7fd58ff277592481f9732e3fb7dc6772f'
+SECRET = 'e5e9fa1ba31ecd1ae84f75caaa474f3a663f05f4'
